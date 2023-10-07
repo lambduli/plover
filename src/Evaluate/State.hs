@@ -16,15 +16,15 @@ data Action a = Succeeded !a
   deriving (Eq, Show)
 
 
-type Path = ([Goal], Map.Map String Term)
+type Query'Vars = Map.Map String Term
+
+
+type Path = ([Goal], Query'Vars)
 
 
 data State
   = State { base :: ![Predicate]
-          -- , query'vars :: !(Map.Map String Term)
-
           , path'q :: Qu Path
-
           , counter :: !Int }
   deriving (Eq, Show)
 

@@ -16,21 +16,46 @@ step :: State -> Action State
 -- that leaves us with an empty goal'stack.
 -- These two equations handle the situation when no backtracking can happen (empty backtracking'stack)
 -- or if some backtracking can happen (Redoing).
--- It's not ideal as the idea that the Action transitions from Succeede to either Done or Redoing is only in our heads.
+-- It's not ideal as the idea that the Action transitions from Succeeded to either Done or Redoing is only in our heads.
 -- It would be much better if it could be encoded in the design so that the type system and pattern matching
--- exhaustivity checker would have our backs, but it is what it is.
+-- exhaustivity checker would be able to check this.
 step state@State{ path'q = Empty }
   = Done
 
--- step state@State{ backtracking'stack = record : backtracking'stack
---                 , goal'stack = [] }
---   = Redoing state'
---   where (new'goal'stack, pos, q'vars) = record
---         state' = state{ goal'stack = new'goal'stack
---                       , position = pos
---                       , query'vars = q'vars
---                       , backtracking'stack }
+{-  This awkward pattern must be checked too.
+    The current goal can be done and it can also be the last goal
+    and this is what that'd look like.  -}
+step state@State{ path'q = Qu { before = []
+                              , current = ([], _)
+                              , after = [] } }
+  = Done
 
+{-  NOTE: In this case, at least one (before, or after) has to be non-empty.  -}
+step state@State{ path'q = q@Qu { current = ([], _)
+                                , after
+                                , direction = Forward } }
+  = case after of
+      p : ps -> Redoing state { path'q = q{ current = p
+                                          , after = ps } }
+      {-  If the `after` list is empty, we assume that the `before` list is not empty.
+          We just change the direction and let the recursion do the work. -}
+      [] -> step state{ path'q = q{ direction = Backward } }
+
+step state@State{ path'q = q@Qu { before
+                                , current = ([], _)
+                                , direction = Backward } }
+  = case before of
+      p : ps -> Redoing state { path'q = q{ before = ps
+                                          , current = p } }
+      {-  If the `before` list is empty, we assume that the `after` list is not empty.
+          We just change the direction and let the recursion do the work. -}
+      [] -> step state{ path'q = q{ direction = Forward }}
+
+{-  The above should deal with the situations when the previous step finished one path.
+    It could mean finishing one of many paths left or finishing the last one.
+    Both those situations should be handled.  -}
+
+{-  TODO: Work on this one. -}
 {-  PROVE CALL  -}
 step state@State{ base
                 , path'q = paths'q@(Qu{ current = Call (f@Struct{ name, args }, q'vars) })
@@ -76,6 +101,8 @@ step state@State{ base
 
       --   in  Searching new'state
 
+  {-  TODO: I think this function is supposed to return a list of all the Predicates and (maybe) positions.
+            At least that seems to be the case from looking at the useage above.  -}
   where look'for :: Struct -> [Predicate] -> Int -> Maybe (Predicate, Int)
         look'for _ [] _ = Nothing
         -- a fact with the same name and arity
@@ -104,10 +131,14 @@ step state@State{ base
 
 {-  PROVE UNIFICATION -}
 step state@State{ base
-                , backtracking'stack
-                , goal'stack = Unify value'l value'r : goal'stack
-                , position
-                , query'vars
+                , path'q = Qu { before
+                              , current = Unify value'l value'r
+                              , after
+                              , direction }
+                -- , backtracking'stack
+                -- , goal'stack = Unify value'l value'r : goal'stack
+                -- , position
+                -- , query'vars
                 , counter }
   = case unify (value'l, value'r) goal'stack query'vars of
       Nothing ->
@@ -132,6 +163,14 @@ succeed state
 -- It needs to replace the current goal'stack with a top of the backtracking one.
 -- That means re-setting the position and the environment.
 -- The counter stays the same (because it only increments).
+{-  TODO:
+          So I need to drop the 'current' goal-path and depending on the direction,
+          set the 'current' to a new goal-path.
+          I must make sure that there is no chance of starvation.
+          If the direction is towards a non-empty part of the queue,
+          we must make sure to select the next one from that part.
+          We only flip the direction if the corresponding part of the queue is empty.          
+ -}
 fail'and'backtrack :: State -> Action State
 fail'and'backtrack state@State{ backtracking'stack = [] }
   = Failed
