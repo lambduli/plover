@@ -131,14 +131,7 @@ step state@State{ base
 
 {-  PROVE UNIFICATION -}
 step state@State{ base
-                , path'q = Qu { before
-                              , current = Unify value'l value'r
-                              , after
-                              , direction }
-                -- , backtracking'stack
-                -- , goal'stack = Unify value'l value'r : goal'stack
-                -- , position
-                -- , query'vars
+                , path'q = q@Qu { current = (Unify value'l value'r : goal'stack, query'vars) }
                 , counter }
   = case unify (value'l, value'r) goal'stack query'vars of
       Nothing ->
@@ -148,15 +141,46 @@ step state@State{ base
       Just (new'goal'stack, new'query'vars) ->
         -- they can be unified and the new'environment reflects that
         -- just return a new state with stack and env changed
-        succeed state { goal'stack = new'goal'stack, query'vars = new'query'vars }
+        succeed state { path'q = q{ current = (new'goal'stack, new'query'vars) } }
 
 
+{-  This function is called when the unifiction-step succeeds.
+    This might mean a complete success for the current path or it might mean that there are yet more goals to deal with.  -}
 succeed :: State -> Action State
-succeed state@State{ goal'stack = [] }
+{-  If the current path is done, we report success. One of the first equations of `step` will deal with backtracking. -}
+succeed state@State{ path'q = Qu{ current = ([], _) } }
   = Succeeded state
 
-succeed state
+{-  If the current path is the only path, we just keep searching it.  -}
+succeed state@State{ path'q = Qu{ before = []
+                                , after = [] } }
   = Searching state
+
+{-  If the direction goes `Forward` but `after` is empty (and `before` is not), we just switch the direction and try again. -}
+succeed state@State{ path'q = q@Qu{ direction = Forward
+                                  , after = [] } }
+  = succeed state{ path'q = q{ direction = Backward } }
+
+{-  If the direction goes `Forward` and `after` is non-empty, we put the `current` on `before` and set the `current` to the next path.  -}
+succeed state@State{ path'q = q@Qu{ before
+                                  , current
+                                  , direction = Forward
+                                  , after = path : paths } }
+  = Searching state{ path'q = q { before = current : before
+                                , current = path
+                                , after = paths } }
+
+succeed state@State{ path'q = q@Qu{ direction = Backward
+                                  , before = [] }}
+  = succeed state{ path'q = q{ direction = Forward }}
+
+succeed state@State{ path'q = q@Qu{ before = path : paths
+                                  , current
+                                  , direction = Backward
+                                  , after } }
+  = Searching state{ path'q = q { before = paths
+                                , current = path
+                                , after = current : after }}
 
 
 -- The following function fails the current goal.
@@ -172,15 +196,27 @@ succeed state
           We only flip the direction if the corresponding part of the queue is empty.          
  -}
 fail'and'backtrack :: State -> Action State
-fail'and'backtrack state@State{ backtracking'stack = [] }
+fail'and'backtrack State{ path'q = Qu { before = []
+                                      , after = [] } }
   = Failed
 
-fail'and'backtrack state@State{ backtracking'stack = backtrack'record : backtracking'stack }
-  = step state{ backtracking'stack
-              , goal'stack = new'goal'stack
-              , position = pos
-              , query'vars = q'vars }
-  where (new'goal'stack, pos, q'vars) = backtrack'record
+fail'and'backtrack state@State{ path'q = q@Qu { direction = Forward
+                                              , after = [] } }
+  = fail'and'backtrack state{ path'q = q{ direction = Backward } }
+
+fail'and'backtrack state@State{ path'q = q@Qu { direction = Forward
+                                              , after = path : paths } }
+  = step state{ path'q = q{ current = path
+                          , after = paths } }
+
+fail'and'backtrack state@State{ path'q = q@Qu { direction = Backward
+                                              , before = [] } }
+  = fail'and'backtrack state{ path'q = q{ direction = Forward } }
+
+fail'and'backtrack state@State{ path'q = q@Qu { direction = Backward
+                                              , before = path : paths } }
+  = step state{ path'q = q{ current = path
+                          , before = paths } }
 
 
 rename'all :: [Term] -> Int -> (Int, [Term])
@@ -247,8 +283,8 @@ unify ( Compound Struct{ name = name'a, args = args'a }
 
 {-  ELIMINATE + OCCURS  -}
 unify (Var a, value) goals query'vars
-  | (Var a) == value = Nothing          -- DELETE (both are variables)
-  | occurs a value = Nothing            -- OCCURS CHECK (the one on the right is not a variable so I can do the check!)
+  | (Var a) == value = Just (goals, query'vars) -- DELETE (both are variables)
+  | occurs a value = Nothing                    -- OCCURS CHECK (the one on the right is not a variable so I can do the check!)
   | otherwise = Just (substituted'goals, substituted'query'vars)
   where
     substituted'goals = map (subst'goal (a, value)) goals
