@@ -12,23 +12,19 @@ import System.IO ( hFlush, stdout, openFile, IOMode(ReadMode), hGetContents )
 import Term ( Term(..), Struct(..), Predicate(..), Goal(..) )
 
 import Evaluate.Step ( step )
-import Evaluate.State ( State(..), Action(..), Qu(..), move )
+import Evaluate.State ( State(..), Action(..), Qu(..), Direction(..) )
 
 import Parser ( parse'base, parse'query )
 
 
 empty'state :: State
 empty'state = State { base = []
-                    , query'vars = Map.empty
                     , path'q = Empty
-                    , position = 0
                     , counter = 0 }
 
 
 set'goal :: [Goal] -> State -> State
-set'goal goals state = state{ query'vars = q'vars
-                            , path'q = qu
-                            , position = 0
+set'goal goals state = state{ path'q = qu
                             , counter = 0 }
   where
     free'names :: [String]
@@ -38,14 +34,12 @@ set'goal goals state = state{ query'vars = q'vars
 
     q'vars = Map.fromList $! zip free'names free'vars
 
-    qu = Qu{ before = [], current = (goals, q'vars), after = [] }
+    qu = Qu{ before = [], current = (goals, q'vars), after = [], direction = Forward }
 
 
 load'base :: [Predicate] -> State -> State
 load'base base state = state{ base = base
-                            , query'vars = Map.empty
                             , path'q = Empty
-                            , position = 0
                             , counter = 0 }
 
 
@@ -82,7 +76,8 @@ try'to'prove state = do
     Succeeded s -> do
       case step s of
         Redoing state' -> do
-          putStrLn $! intercalate "\n" $! map (\ (k, v) -> k ++ " = " ++ show v) $! Map.toList (query'vars s)
+          let Qu{ current = (_, q'vars) } = path'q s
+          putStrLn $! intercalate "\n" $! map (\ (k, v) -> k ++ " = " ++ show v) $! Map.toList q'vars
           user'input <- getLine
           case user'input of
             ":next" -> do
@@ -97,7 +92,8 @@ try'to'prove state = do
               try'to'prove state'
 
         Done -> do
-          putStrLn $! intercalate "\n" (map (\ (k, v) -> k ++ " = " ++ show v) (Map.toList (query'vars s))) ++ " ."
+          let Qu{ current = (_, q'vars) } = path'q s
+          putStrLn $! intercalate "\n" (map (\ (k, v) -> k ++ " = " ++ show v) (Map.toList q'vars)) ++ " ."
           repl s
 
         _ -> error "should never happen"

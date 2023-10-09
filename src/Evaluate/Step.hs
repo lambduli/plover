@@ -58,81 +58,50 @@ step state@State{ path'q = q@Qu { before
 {-  TODO: Work on this one. -}
 {-  PROVE CALL  -}
 step state@State{ base
-                , path'q = paths'q@(Qu{ current = Call (f@Struct{ name, args }, q'vars) })
+                , path'q = q@Qu{ current = (Call f@Struct{ name, args } : goals, q'vars) }
                 , counter }
-  = case look'for f base of
-      Nothing -> fail'and'backtrack state
+  = let predicates = look'for f base
+        (new'counter, paths) = mapAccumL to'path counter predicates
+        path'qs = add'paths paths q
+    in  case pop'path path'qs of
+          Nothing -> -- should not really happen, a few of them were just added
+            error "should never happen"
+          Just new'path'q ->
+            Searching state { path'q = new'path'q
+                            , counter = new'counter }
 
-      Just predicates ->
-        let (paths, new'counter) = mapAccumL to'path counter predicates
-            path'q' = add'paths paths paths'q
-        in  case pop'path path'q' of
-              Nothing -> -- should not really happen, a few of them were just added
-                error "should never happen"
-              Just new'path'q ->
-                state { path'q = new'path'q
-                      , counter = new'counter }
-
-      -- Just (Fact (Struct{ args = patterns }), the'position) ->
-      --   let (counter', patterns') = rename'all patterns counter
-      --       goals = map (uncurry Unify) (zip args patterns')
-      --       new'goal'stack = goals ++ goal'stack
-
-      --       backtracking'stack' = cause'backtracking f base (the'position + 1) gs query'vars backtracking'stack
-
-      --       new'state =  state{ backtracking'stack = backtracking'stack'
-      --                         , goal'stack = new'goal'stack
-      --                         , position = 0  -- the current goal will never ever be tried again (in this goal'stack anyway)
-      --                         , counter = counter' }
-
-      --   in  Searching new'state
-
-      -- Just (Struct{ args = patterns } :- body, the'position) -> 
-      --   let (counter', patterns', body') = rename'both patterns body counter
-      --       head'goals = map (uncurry Unify) (zip args patterns')
-      --       new'goal'stack = head'goals ++ body' ++ goal'stack
-
-      --       backtracking'stack' = cause'backtracking f base (the'position + 1) gs query'vars backtracking'stack
-
-      --       new'state =  state{ backtracking'stack = backtracking'stack'
-      --                         , goal'stack = new'goal'stack
-      --                         , position = 0  -- the current goal will never ever be tried again
-      --                         , counter = counter' }
-
-      --   in  Searching new'state
-
-  {-  TODO: I think this function is supposed to return a list of all the Predicates and (maybe) positions.
-            At least that seems to be the case from looking at the useage above.  -}
-  where look'for :: Struct -> [Predicate] -> Int -> Maybe (Predicate, Int)
-        look'for _ [] _ = Nothing
-        -- a fact with the same name and arity
-        look'for f@Struct{ name, args } (fact@(Fact (Struct{ name = name', args = args' })) : base) pos
-          | name == name' && length args == length args' = Just (fact, pos)
-          | otherwise = look'for f base (pos + 1)
-        -- | Struct :- Term
-        -- a rule with the same name and arity
-        look'for f@Struct{ name, args } (rule@(Struct{ name = name', args = args' } :- body) : base) pos
-          | name == name' && length args == length args' = Just (rule, pos)
-          | otherwise = look'for f base (pos + 1)
+  where look'for :: Struct -> [Predicate] -> [Predicate]
+        look'for _ [] = []
+        
+        look'for f@Struct{ name, args } (fact@(Fact (Struct{ name = name', args = args' })) : base)
+          | name == name' && length args == length args' = fact : look'for f base
+          | otherwise = look'for f base
+        
+        look'for f@Struct{ name, args } (rule@(Struct{ name = name', args = args' } :- body) : base)
+          | name == name' && length args == length args' = rule : look'for f base
+          | otherwise = look'for f base
 
 
-        -- cause'backtracking :: Struct -> [Predicate] -> Int -> [Goal] -> Map.Map String Term -> [([Goal], Int, Map.Map String Term)] -> [([Goal], Int, Map.Map String Term)]
-        -- cause'backtracking f base position goal'stack q'vars backtracking'stack
-        --   = case look'for f (drop position base) position of
-        --       Nothing -> backtracking'stack
-        --       Just (_, future'position) ->
-        --         let backtracking'record = (goal'stack, future'position, q'vars)
-        --         in  backtracking'record : backtracking'stack
-
-        -- uses `f` and `q'vars` from the surrounding scope
+        -- uses `f` and `q'vars` and `goals` from the surrounding scope
         to'path :: Int -> Predicate -> (Int, ([Goal], Map.Map String Term))
-        to'path counter (Fact (Struct{ args = patterns })) = undefined
-        to'path counter (Struct{ args = patterns } :- body) = undefined
+        to'path counter (Fact (Struct{ args = patterns }))
+          = let (counter', patterns') = rename'all patterns counter
+                goals' = map (uncurry Unify) (zip args patterns')
+                new'goal'stack = goals' ++ goals
+
+            in  (counter', (new'goal'stack, q'vars))
+
+
+        to'path counter (Struct{ args = patterns } :- body)
+          = let (counter', patterns', body') = rename'both patterns body counter
+                head'goals = map (uncurry Unify) (zip args patterns')
+                new'goal'stack = head'goals ++ body' ++ goals
+
+            in  (counter', (new'goal'stack, q'vars))
+
 
 {-  PROVE UNIFICATION -}
-step state@State{ base
-                , path'q = q@Qu { current = (Unify value'l value'r : goal'stack, query'vars) }
-                , counter }
+step state@State{ path'q = q@Qu { current = (Unify value'l value'r : goal'stack, query'vars) } }
   = case unify (value'l, value'r) goal'stack query'vars of
       Nothing ->
         -- could not unify
@@ -323,8 +292,9 @@ occurs var'name Wildcard = False
 
 
 add'paths :: [Path] -> Qu Path -> Qu Path
-add'paths paths Qu{ before, direction = Forward } = Qu{ before = paths ++ before }
-add'paths paths Qu{ after, direction = Backward } = Qu{ after = paths ++ after }
+add'paths paths q@Qu{ before, direction = Forward } = q{ before = paths ++ before }
+add'paths paths q@Qu{ after, direction = Backward } = q{ after = paths ++ after }
+
 
 pop'path :: Qu Path -> Maybe (Qu Path)
 pop'path Qu{ before = [], after = [] }
@@ -337,7 +307,7 @@ pop'path Qu{ before, after = p : ps, direction = Forward }
   = Just Qu{ before, current = p, after = ps, direction = Forward }
 --  at the beginning again, changing direction
 pop'path Qu{ before = [], after = p : ps, direction = Backward }
-  = Just Qu{ before, current = p, after = ps, direction = Forward }
+  = Just Qu{ before = [], current = p, after = ps, direction = Forward }
 --  <--
 pop'path Qu{ before = p : ps, after, direction = Backward }
   = Just Qu{ before = ps, current = p, after, direction = Backward }
