@@ -8,6 +8,6 @@ Plover's syntax is a subset of Prolog's. This means it's limited to *Horn Clause
 
 The search strategy is very close to *Breadth-first Search* but not necessarily exactly it.
 
-In ever other aspect it works exactly like the *Minilog*—it uses unification and is **not based** on *resolution*.
+In ever other aspect it works exactly like the *Minilog*—it **uses unification** and is **not based** on *resolution*.
 
 For more information about the abstract machine that both *Plover* and *Minilog* implement you can read the [write-up](https://github.com/lambduli/minilog/blob/main/WRITEUP.md) for *Minilog*.
