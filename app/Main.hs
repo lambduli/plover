@@ -45,7 +45,7 @@ load'base base state = state{ base = base
 
 main :: IO ()
 main = do
-  putStrLn "Plover - a toy automated theorem prover."
+  putStrLn "Plover — a toy automated theorem prover."
   repl empty'state
   putStrLn "Bye!"
 
