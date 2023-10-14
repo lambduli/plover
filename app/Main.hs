@@ -45,7 +45,7 @@ load'base base state = state{ base = base
 
 main :: IO ()
 main = do
-  putStrLn "Minolog - implementation of simple logic programming language."
+  putStrLn "Plover - a toy automated theorem prover."
   repl empty'state
   putStrLn "Bye!"
 
