@@ -32,3 +32,9 @@ A system with a *Depth-first Search Strategy* like *Prolog* or *Minilog* would n
 ```
 appear in the knowledge base would lead to an *unproductive* infinite loop.
 This is precisely the difference between having a *complete search strategy* and an incomplete one.
+
+
+## Resources
+
+- [Theorem Proving with Prolog](https://www.metalevel.at/prolog/theoremproving)
+- [Artificial Intelligence: A Modern Approach](https://aima.cs.berkeley.edu)
