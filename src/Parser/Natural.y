@@ -1,10 +1,10 @@
 {
-module Parser ( parse'base, parse'query ) where
+module Parser.Natural ( parse'base, parse'query ) where
 
 import Control.Monad.Error
 import Control.Monad.State
 
-import Lexer ( lexer, eval'parser, Lexer(..) )
+import Lexer.Natural ( lexer, eval'parser, Lexer(..) )
 import Token ( Token )
 import Token qualified as Token
 import Term ( Term(..), Struct(..), Predicate(..), Goal(..) )

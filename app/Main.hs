@@ -14,7 +14,7 @@ import Term ( Term(..), Struct(..), Predicate(..), Goal(..) )
 import Evaluate.Step ( step )
 import Evaluate.State ( State(..), Action(..), Qu(..), Direction(..) )
 
-import Parser ( parse'base, parse'query )
+import Parser.Natural qualified ( parse'base, parse'query )
 
 
 empty'state :: State
@@ -61,12 +61,12 @@ repl old'state = do
     ':' : 'l' : 'o' : 'a' : 'd' : file'path -> do
       file'handle <- openFile (trim file'path) ReadMode
       file'content <- hGetContents file'handle
-      let new'base = parse'base file'content
+      let new'base = Parser.Natural.parse'base file'content
           new'state = load'base new'base old'state
       repl new'state
 
     _ -> do
-      let goals = parse'query str
+      let goals = Parser.Natural.parse'query str
           new'state = set'goal goals old'state
       try'to'prove new'state
 

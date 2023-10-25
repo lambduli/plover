@@ -1,5 +1,5 @@
 {
-module Lexer ( lexer, read'token, use'lexer, eval'parser, Lexer(..) ) where
+module Lexer.Natural ( lexer, read'token, use'lexer, eval'parser, Lexer(..) ) where
 
 import Control.Monad.State
 import Control.Monad.Error ( throwError )
