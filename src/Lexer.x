@@ -19,14 +19,14 @@ $upper                = [A-Z]
 
 $lower                = [a-z]
 
-@variableident        = $upper+
+@variableident        = $upper+ [\- $upper]*
 
-@atomident            = $lower+
+@atomident            = $lower+ [\- $lower]*
 
 $space                = [\ \t\f\v\n]
 
 
-minilog :-
+plover :-
 
 $space+                 ;
 
@@ -34,7 +34,7 @@ $space+                 ;
 
 ","                     { \_ -> token Token.Comma }
 
-"."                     { \_ -> token Token.Period }
+-- "."                     { \_ -> token Token.Period }
 
 ":-"                    { \_ -> token Token.If }
 
@@ -45,6 +45,8 @@ $space+                 ;
 ")"                     { \_ -> token Token.Paren'Close }
 
 "_"                     { \_ -> token Token.Underscore }
+
+"-"+                    { \_ -> token Token.Line }
 
 @variableident          { emit Token.Var }
 

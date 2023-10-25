@@ -9,6 +9,7 @@ data Token  = Atom String
             | Paren'Open
             | Paren'Close
             | Underscore
+            | Line
             | Equal
             | EOF
   deriving (Eq, Show)
