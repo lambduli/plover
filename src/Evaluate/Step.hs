@@ -73,18 +73,18 @@ step state@State{ base
   where look'for :: Struct -> [Predicate] -> [Predicate]
         look'for _ [] = []
         
-        look'for f@Struct{ name, args } (fact@(Fact (Struct{ name = name', args = args' })) : base)
+        look'for f@Struct{ name, args } (fact@(Fact (Struct{ name = name', args = args' }) _) : base)
           | name == name' && length args == length args' = fact : look'for f base
           | otherwise = look'for f base
         
-        look'for f@Struct{ name, args } (rule@(Struct{ name = name', args = args' } :- body) : base)
+        look'for f@Struct{ name, args } (rule@(Rule Struct{ name = name', args = args' } body _) : base)
           | name == name' && length args == length args' = rule : look'for f base
           | otherwise = look'for f base
 
 
         -- uses `f` and `q'vars` and `goals` from the surrounding scope
         to'path :: Int -> Predicate -> (Int, ([Goal], Map.Map String Term))
-        to'path counter (Fact (Struct{ args = patterns }))
+        to'path counter (Fact (Struct{ args = patterns }) _)
           = let (counter', patterns') = rename'all patterns counter
                 goals' = map (uncurry Unify) (zip args patterns')
                 new'goal'stack = goals' ++ goals
@@ -92,7 +92,7 @@ step state@State{ base
             in  (counter', (new'goal'stack, q'vars))
 
 
-        to'path counter (Struct{ args = patterns } :- body)
+        to'path counter (Rule Struct{ args = patterns } body _)
           = let (counter', patterns', body') = rename'both patterns body counter
                 head'goals = map (uncurry Unify) (zip args patterns')
                 new'goal'stack = head'goals ++ body' ++ goals

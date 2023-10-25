@@ -50,8 +50,10 @@ extra-doc-files:    CHANGELOG.md
 
 -- Extra source files to be distributed with the package, such as examples, or a tutorial module.
 extra-source-files:
-    src/Lexer.x
-    src/Parser.y
+    src/Lexer/Natural.x
+    src/Lexer/Prolog.x
+    src/Parser/Natural.y
+    src/Parser/Prolog.y
 
 common warnings
     ghc-options: -Wall
@@ -62,8 +64,10 @@ library
         Evaluate.State
         Evaluate.Step
         Token
-        Lexer
-        Parser
+        Lexer.Natural
+        Lexer.Prolog
+        Parser.Natural
+        Parser.Prolog
 
     build-tool-depends: alex:alex >=3.2.6 && <4.0, happy:happy >=1.20.0 && <2.0
     hs-source-dirs:     src

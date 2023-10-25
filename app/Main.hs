@@ -1,6 +1,6 @@
 module Main where
 
-import Data.List ( foldl', intercalate )
+import Data.List ( foldl', intercalate, isSuffixOf )
 import Data.List.Extra ( trim )
 
 import Data.Map.Strict qualified as Map
@@ -14,7 +14,8 @@ import Term ( Term(..), Struct(..), Predicate(..), Goal(..) )
 import Evaluate.Step ( step )
 import Evaluate.State ( State(..), Action(..), Qu(..), Direction(..) )
 
-import Parser ( parse'base, parse'query )
+import Parser.Natural qualified ( parse'base, parse'query )
+import Parser.Prolog qualified ( parse'base, parse'query )
 
 
 empty'state :: State
@@ -37,10 +38,11 @@ set'goal goals state = state{ path'q = qu
     qu = Qu{ before = [], current = (goals, q'vars), after = [], direction = Forward }
 
 
-load'base :: [Predicate] -> State -> State
-load'base base state = state{ base = base
-                            , path'q = Empty
-                            , counter = 0 }
+load'base :: [Predicate] -> State -> Bool -> State
+load'base base state is'natural = state { base = base
+                                        , path'q = Empty
+                                        , counter = 0
+                                        , is'natural = is'natural }
 
 
 main :: IO ()
@@ -61,12 +63,16 @@ repl old'state = do
     ':' : 'l' : 'o' : 'a' : 'd' : file'path -> do
       file'handle <- openFile (trim file'path) ReadMode
       file'content <- hGetContents file'handle
-      let new'base = parse'base file'content
-          new'state = load'base new'base old'state
+      let is'natural = ".nad" `isSuffixOf` file'path
+      let parse = if is'natural then Parser.Natural.parse'base else Parser.Prolog.parse'base
+      let new'base = parse file'content
+          new'state = load'base new'base old'state is'natural
       repl new'state
 
     _ -> do
-      let goals = parse'query str
+      let is'nat = is'natural old'state
+      let parse = if is'nat then Parser.Natural.parse'query else Parser.Prolog.parse'query
+      let goals = parse str
           new'state = set'goal goals old'state
       try'to'prove new'state
 

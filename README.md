@@ -33,6 +33,41 @@ A system with a *Depth-first Search Strategy* like *Prolog* or *Minilog* would n
 appear in the knowledge base would lead to an *unproductive* infinite loop.
 This is precisely the difference between having a *complete search strategy* and an incomplete one.
 
+#### Natural Deduction Syntax
+
+It also supports syntax of natural deduction.
+Here's how one might define a factorial on *Peano Numbers* using this alternative form of syntax:
+
+```
+-------------- plus-z
+plus(z, N, N)
+
+plus(N, M, R)
+-------------------- plus-suc
+plus(s(N), M, s(R))
+
+times(N, M, R)
+plus(R, M, A)
+------------------ times-suc
+times(s(N), M, A)
+
+
+--------------- times-z
+times(z, _, z)
+
+fact(N, PR)
+times(s(N), PR, R)
+------------------- fact-suc
+fact(s(N), R)
+
+
+-------------- fact-z
+fact(z, s(z))
+```
+
+The key is—when the file's extension is `.nad` (for natural deduction) the `:load` command automatically knows to select the other parser and lexer.
+The queries are expected to be in the same syntax as the corresponding knowledge base.
+
 
 ## Resources
 
