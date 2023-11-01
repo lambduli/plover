@@ -1,0 +1,8 @@
+
+is-nat(N)
+------------- is-nat-suc
+is-nat(s(N))
+
+
+------- is-nat-z
+is-nat(z)

@@ -1,10 +1,10 @@
 {
-module Parser ( parse'base, parse'query ) where
+module Parser.Natural ( parse'base, parse'query ) where
 
 import Control.Monad.Error
 import Control.Monad.State
 
-import Lexer ( lexer, eval'parser, Lexer(..) )
+import Lexer.Natural ( lexer, eval'parser, Lexer(..) )
 import Token ( Token )
 import Token qualified as Token
 import Term ( Term(..), Struct(..), Predicate(..), Goal(..) )
@@ -28,12 +28,13 @@ import Term ( Term(..), Struct(..), Predicate(..), Goal(..) )
   ATOM    { Token.Atom $$ }
 
   ','     { Token.Comma }
-  '.'     { Token.Period }
+  -- '.'     { Token.Period }
   ':-'    { Token.If }
   '='     { Token.Equal }
   '('     { Token.Paren'Open }
   ')'     { Token.Paren'Close }
   '_'     { Token.Underscore }
+  '-'     { Token.Line }
 
 %%
 
@@ -48,12 +49,12 @@ Predicates    ::  { [Predicate] }
 
 
 Predicate     ::  { Predicate }
-              :   Struct '.'               { Fact $1 }
-              |   Struct ':-' Body         { $1 :- $3 }
+              :   '-' MRName Struct        { Fact $3 $2 }
+              |   Body '-' MRName Struct   { Rule $4 $1 $3 }
 
 
 Body          ::  { [Goal] }
-              :   Goals '.'                 { $1 }
+              :   Goals                    { $1 }
 
 
 Struct       ::  { Struct }
@@ -73,12 +74,17 @@ Term       ::  { Term }
 
 Goals         ::  { [Goal] }
               :   Goal                      { [ $1 ] }
-              |   Goal ',' Goals            { $1 : $3 }
+              |   Goal Goals                { $1 : $2 }
 
 
 Goal          ::  { Goal }
               :   Struct                    { Call $1 }
               |   Term '=' Term             { Unify $1 $3 }
+
+
+MRName        ::  { Maybe String }
+              :   ATOM                      { Just $1 }
+              |   {- empty -}               { Nothing }
 
 {
 

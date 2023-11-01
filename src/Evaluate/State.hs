@@ -25,7 +25,8 @@ type Path = ([Goal], Query'Vars)
 data State
   = State { base :: ![Predicate]
           , path'q :: Qu Path
-          , counter :: !Int }
+          , counter :: !Int
+          , is'natural :: Bool }
   deriving (Eq, Show)
 
 

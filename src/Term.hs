@@ -8,8 +8,10 @@ data Goal = Call !Struct
   deriving (Eq)
 
 
-data Predicate  = Fact !Struct
-                | !Struct :- ![Goal]
+type Rule'Name = Maybe String
+
+data Predicate  = Fact !Struct Rule'Name
+                | Rule !Struct ![Goal] Rule'Name
   deriving (Eq)
 
 
@@ -30,8 +32,8 @@ instance Show Goal where
 
 
 instance Show Predicate where
-  show (Fact struct) = show struct ++ "."
-  show (head :- body) = show head ++ " :- " ++ intercalate " , " (map show body) ++ "."
+  show (Fact struct name) = show struct ++ "."
+  show (Rule head body name) = show head ++ " :- " ++ intercalate " , " (map show body) ++ "."
 
 
 instance Show Struct where

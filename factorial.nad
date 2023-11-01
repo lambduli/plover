@@ -1,0 +1,28 @@
+
+-------------- plus-z
+plus(z, N, N)
+
+
+plus(N, M, R)
+-------------------- plus-suc
+plus(s(N), M, s(R))
+
+
+times(N, M, R)
+plus(R, M, A)
+------------------ times-suc
+times(s(N), M, A)
+
+
+--------------- times-z
+times(z, _, z)
+
+
+fact(N, PR)
+times(s(N), PR, R)
+------------------- fact-suc
+fact(s(N), R)
+
+
+-------------- fact-z
+fact(z, s(z))
