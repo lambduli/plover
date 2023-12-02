@@ -1,8 +1,8 @@
 {
 module Lexer.Prolog ( lexer, read'token, eval'parser, Lexer(..) ) where
 
-import Control.Monad.State
-import Control.Monad.Error ( throwError )
+import Control.Monad.State ( MonadState(get, put), gets, StateT( runStateT ), State )
+import Control.Monad.Except ( Except, runExcept, throwError )
 
 import Data.Word ( Word8 )
 import Data.Char ( ord )
