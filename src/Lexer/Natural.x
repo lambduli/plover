@@ -1,16 +1,17 @@
 {
-module Lexer.Natural ( lexer, read'token, use'lexer, eval'parser, Lexer(..) ) where
+module Lexer.Natural ( lexer, read'token, eval'parser, Lexer(..) ) where
 
-import Control.Monad.State
-import Control.Monad.Error ( throwError )
+import Control.Monad.State ( MonadState(get, put), gets, StateT( runStateT ), State )
+import Control.Monad.Except ( Except, runExcept, throwError )
 
 import Data.Word ( Word8 )
 import Data.Char ( ord )
 import Data.List ( uncons )
 
 import Token ( Token )
-import Token qualified as Token
+import Token qualified
 
+import Lexer.Lexer
 
 }
 
@@ -52,20 +53,11 @@ $space+                 ;
 
 @atomident              { emit Token.Atom }
 
-
 {
-
-
-token :: Token -> Lexer Token
-token t = return t
-
-
-emit :: (String -> Token) -> String -> Lexer Token
-emit mk't str = return (mk't str)
-
 
 lexer :: (Token -> Lexer a) -> Lexer a
 lexer cont = read'token >>= cont
+
 
 read'token :: Lexer Token
 read'token = do
@@ -74,7 +66,7 @@ read'token = do
     AlexEOF -> return Token.EOF
 
     AlexError inp' ->
-      error $! "Lexical error on line " ++ (show $! ai'line'no inp') ++ " and column " ++ (show $! ai'col'no inp')
+      throwError ("Lexical error on line " ++ (show $! ai'line'no inp') ++ " and column " ++ (show $! ai'col'no inp'), ai'col'no inp')
     
     AlexSkip inp' _ -> do
       put s{ lexer'input = inp' }
@@ -104,53 +96,5 @@ alexGetByte input@Input{ ai'input }
                   , ai'col'no     = ai'col'no input + 1
                   , ai'last'char  = c
                   , ai'input      = rest } )
-
-
-get'line'no :: Lexer Int
-get'line'no = gets (ai'line'no . lexer'input)
-
-
-get'col'no :: Lexer Int
-get'col'no = gets (ai'col'no . lexer'input)
-
-
-use'lexer :: Lexer Token -> String -> [Token]
-use'lexer lexer source
-  = go [] $ runState lexer (initial'state source)
-    where
-      -- go :: [a] -> (a, Lexer'State) -> [a]
-      go acc (t@Token.EOF, _)
-        = reverse (t : acc)
-      go acc (token, l'state)
-        = go (token : acc) $ runState lexer l'state
-
-
-eval'parser :: Lexer a -> String -> a
-eval'parser parser source = evalState parser (initial'state source)
-
-
-type Lexer a = State Lexer'State a
-
-
-data AlexInput = Input
-  { ai'line'no   :: !Int
-  , ai'col'no    :: !Int
-  , ai'last'char :: !Char
-  , ai'input     :: String }
-  deriving (Eq, Show)
-
-
-data Lexer'State = Lexer'State
-  { lexer'input       :: !AlexInput }
-  deriving (Eq, Show)
-
-
-initial'state :: String -> Lexer'State
-initial'state s = Lexer'State
-  { lexer'input       = Input
-                        { ai'line'no    = 1
-                        , ai'col'no     = 1 
-                        , ai'last'char  = '\n'
-                        , ai'input      = s } }
 
 }

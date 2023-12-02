@@ -64,6 +64,7 @@ library
         Evaluate.State
         Evaluate.Step
         Token
+        Lexer.Lexer
         Lexer.Natural
         Lexer.Prolog
         Parser.Natural

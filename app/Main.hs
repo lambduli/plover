@@ -65,9 +65,15 @@ repl old'state = do
       file'content <- hGetContents file'handle
       let is'natural = ".nad" `isSuffixOf` file'path
       let parse = if is'natural then Parser.Natural.parse'base else Parser.Prolog.parse'base
-      let new'base = parse file'content
-          new'state = load'base new'base old'state is'natural
-      repl new'state
+      case parse file'content of
+        Left (err, col) -> do
+          let padding = take (3 + col - 1) $! repeat ' '
+          putStrLn $! padding ++ "^"
+          putStrLn err
+          repl old'state
+        Right new'base -> do
+          let new'state = load'base new'base old'state is'natural
+          repl new'state
 
     ':' : _ -> do
       putStrLn "I don't know this command, sorry."
@@ -76,9 +82,16 @@ repl old'state = do
     _ -> do
       let is'nat = is'natural old'state
       let parse = if is'nat then Parser.Natural.parse'query else Parser.Prolog.parse'query
-      let goals = parse str
-          new'state = set'goal goals old'state
-      try'to'prove new'state
+      case parse str of
+        Left (err, col) -> do
+          let padding = take (3 + col - 1) $! repeat ' '
+          putStrLn $! padding ++ "^"
+          putStrLn err
+          repl old'state
+        Right goals -> do
+          let new'state = set'goal goals old'state
+          try'to'prove new'state
+
 
 try'to'prove :: State -> IO ()
 try'to'prove state = do
